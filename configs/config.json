@@ -1,0 +1,35 @@
+{
+  "prefix": ".",
+  "ownerIds": ["123456789012345678"],
+  "presence": {
+    "enabled": true,
+    "mode": "rich",
+    "type": "STREAMING",
+    "status": "idle",
+    "applicationId": "367827983903490050",
+    "name": "Wand Services",
+    "details": "Wand Services",
+    "state": "Chilling",
+    "url": "https://www.twitch.tv/misaki",
+    "largeImage": "https://i.pinimg.com/736x/f3/0d/86/f30d86c46fc41d8f3b837d2ea067399d.jpg",
+    "largeText": "Idle mode",
+    "smallImage": "373370493127884800",
+    "smallText": "Coded by Bydars",
+    "platform": "desktop",
+    "custom": {
+      "emoji": "🌙",
+      "text": "Misaki en chill mode"
+    },
+    "spotify": {
+      "largeImage": "spotify:ab67616d00001e029dabed68d8c46d46a0c7890d",
+      "smallImage": "spotify:ab67616d0000b2739dabed68d8c46d46a0c7890d",
+      "album": "Ponte Loquita",
+      "artist": "Katteyes; Kidd Voodoo",
+      "track": "Ponte Loquita",
+      "duration": 183,
+      "songId": "0Lahr7sUDdtYnX3n3KobR6",
+      "albumId": "23x1J2mnb1oMcD1ib0gCVx",
+      "artistIds": ["4kKazhy9tDfOgKSWm5g3F9", "10VBp06W8NIgMW4JruLCC4"]
+    }
+  }
+}
