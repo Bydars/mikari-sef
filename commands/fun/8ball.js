@@ -48,6 +48,6 @@ module.exports = {
       `> 💬 **${response}**`,
     ].join("\n");
 
-    return msg.temp(formatted, 15000);
+    return msg.channel.send(formatted);
   },
 };
