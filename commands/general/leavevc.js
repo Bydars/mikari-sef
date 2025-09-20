@@ -1,5 +1,4 @@
 const { getVoiceConnection } = require("@discordjs/voice");
-const sendTemp = require("../../utils/sendTemp");
 
 module.exports = {
   name: "leavevc",
@@ -9,21 +8,21 @@ module.exports = {
   category: "general",
 
   async run({ msg, logger }) {
-    if (!msg.guild) {
-      return sendTemp(msg, "❌ Este comando solo funciona en servidores.");
-    }
-
-    const connection = getVoiceConnection(msg.guild.id);
-    if (!connection) {
-      return sendTemp(msg, "❌ No estoy en ningún canal de voz en este servidor.");
-    }
-
     try {
+      if (!msg.guild) {
+        return msg.temp("❌ Este comando solo funciona en servidores.", 4000);
+      }
+
+      const connection = getVoiceConnection(msg.guild.id);
+      if (!connection) {
+        return msg.temp("❌ No estoy en ningún canal de voz en este servidor.", 4000);
+      }
+
       connection.destroy();
-      await sendTemp(msg, "👋 Desconectado del canal de voz.");
+      await msg.temp("👋 Desconectado del canal de voz.", 4000);
     } catch (err) {
       logger.error("💥 Error al salir del canal de voz:", err);
-      await sendTemp(msg, "❌ Ocurrió un error al desconectarme del canal de voz.");
+      await msg.temp("❌ Ocurrió un error al desconectarme del canal de voz.", 4000);
     }
   },
 };

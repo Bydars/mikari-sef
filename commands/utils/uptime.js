@@ -1,5 +1,3 @@
-const sendTemp = require("../../utils/sendTemp");
-
 module.exports = {
   name: "uptime",
   aliases: ["up"],
@@ -8,20 +6,24 @@ module.exports = {
   category: "utils",
 
   async run({ client, msg }) {
-    const total = Date.now() - client.stats.startedAt;
+    try {
+      const total = Date.now() - client.stats.startedAt;
 
-    const days = Math.floor(total / (1000 * 60 * 60 * 24));
-    const hours = Math.floor(total / (1000 * 60 * 60)) % 24;
-    const minutes = Math.floor(total / (1000 * 60)) % 60;
-    const seconds = Math.floor(total / 1000) % 60;
+      const days = Math.floor(total / 86400000);
+      const hours = Math.floor(total / 3600000) % 24;
+      const minutes = Math.floor(total / 60000) % 60;
+      const seconds = Math.floor(total / 1000) % 60;
 
-    const parts = [];
-    if (days) parts.push(`${days}d`);
-    if (hours) parts.push(`${hours}h`);
-    if (minutes) parts.push(`${minutes}m`);
-    parts.push(`${seconds}s`);
+      const parts = [];
+      if (days) parts.push(`${days}d`);
+      if (hours) parts.push(`${hours}h`);
+      if (minutes) parts.push(`${minutes}m`);
+      parts.push(`${seconds}s`);
 
-    const content = `⏱️ Uptime: \`${parts.join(" ")}\``;
-    await sendTemp(msg, content);
+      await msg.temp(`⏱️ Uptime: \`${parts.join(" ")}\``);
+    } catch (err) {
+      console.error("❌ Error en comando uptime:", err);
+      await msg.react("⚠️").catch(() => {});
+    }
   },
 };

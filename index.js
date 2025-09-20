@@ -1,4 +1,4 @@
-const { Client, Collection } = require("discord.js-selfbot-v13");
+const { Client, Collection, Message } = require("discord.js-selfbot-v13");
 const fs = require("fs");
 const path = require("path");
 
@@ -8,8 +8,8 @@ const { setupPresence } = require("./utils/presence");
 const config = require("./configs/config.json");
 
 const PREFIX = config.prefix || ".";
-
 const token = process.env.DISCORD_TOKEN;
+
 const tokenPattern = /^[A-Za-z0-9_\-]{20,}\.[A-Za-z0-9_\-]{6,}\.[A-Za-z0-9_\-]{27,}$/;
 if (!token || !tokenPattern.test(token)) {
   logger.error("❌ Token inválido o ausente en .env");
@@ -28,6 +28,19 @@ client.commands = new Collection();
 client.aliases = new Collection();
 client.categories = new Set();
 client.stats = { commandsUsed: 0, startedAt: Date.now() };
+
+Message.prototype.temp = async function (content, timeout = 5000) {
+  try {
+    const sent = await this.channel.send(content);
+    setTimeout(() => {
+      if (!sent.deleted) sent.delete().catch(() => {});
+    }, timeout);
+    return sent;
+  } catch (err) {
+    console.error("❌ Error en msg.temp:", err);
+    return null;
+  }
+};
 
 function loadCommands() {
   const start = Date.now();
