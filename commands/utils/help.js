@@ -12,68 +12,54 @@ const CAT_ICONS = {
 const LIMIT = 1900;
 const FENCE = "```md\n";
 
-function sanitize(s) {
-  return String(s)
-    .replace(/@/g, "@\u200b")
-    .replace(/```/g, "ˋˋˋ");
-}
+const sanitize = (s) =>
+  String(s).replace(/@/g, "@\u200b").replace(/```/g, "ˋˋˋ");
 
-function block(text) {
-  return FENCE + text + "\n```";
-}
+const block = (text) => FENCE + text + "\n```";
 
 async function sendChunked(msg, text, delay = 10_000) {
   const lines = text.split("\n");
   let buffer = "";
 
   for (const line of lines) {
-    const test = buffer ? buffer + "\n" + line : line;
-
-    if (block(test).length > LIMIT) {
+    const candidate = buffer ? buffer + "\n" + line : line;
+    if (block(candidate).length > LIMIT) {
       await sendTemp(msg, block(buffer), delay);
       buffer = line;
     } else {
-      buffer = test;
+      buffer = candidate;
     }
   }
-
-  if (buffer.trim()) {
-    await sendTemp(msg, block(buffer), delay);
-  }
+  if (buffer.trim()) await sendTemp(msg, block(buffer), delay);
 }
 
-function renderCommandBlock(prefix, cmd) {
+function renderCommandBlock(cmd, prefix) {
   const alias = cmd.aliases?.length ? cmd.aliases.join(", ") : "—";
-
   return [
     `• **${sanitize(cmd.name)}**${alias !== "—" ? ` (alias: ${sanitize(alias)})` : ""}`,
     `   Uso: \`${prefix}${sanitize(cmd.usage || cmd.name)}\``,
     `   Categoría: ${sanitize(cmd.category || "misc")}`,
     cmd.description ? `   Descripción: ${sanitize(cmd.description)}` : "",
-    ""
+    "",
   ].join("\n");
 }
 
-function renderCategory(prefix, category, commands) {
-  const icon = CAT_ICONS[category.toLowerCase()] || "📂";
-  const blocks = commands.map((cmd) => renderCommandBlock(prefix, cmd));
-  return `${icon} **${category}**\n\n${blocks.join("\n")}`;
+function renderCategory(category, commands, prefix) {
+  const icon = CAT_ICONS[String(category).toLowerCase()] || "📂";
+  return `${icon} **${category}**\n\n${commands
+    .map((c) => renderCommandBlock(c, prefix))
+    .join("\n")}`;
 }
 
-function normalize(str) {
-  return String(str)
-    .normalize("NFD")
-    .replace(/[\u0300-\u036f]/g, "")
-    .toLowerCase();
-}
+const normalize = (s) =>
+  String(s).normalize("NFD").replace(/[\u0300-\u036f]/g, "").toLowerCase();
 
 function resolveCommand(client, query) {
   const key = normalize(query);
   return (
-    [...client.commands.values()].find((c) => normalize(c.name) === key) ||
-    [...client.commands.values()].find((c) =>
-      (c.aliases || []).some((a) => normalize(a) === key)
-    ) || null
+    client.commands.find((c) => normalize(c.name) === key) ||
+    client.commands.find((c) => (c.aliases || []).some((a) => normalize(a) === key)) ||
+    null
   );
 }
 
@@ -84,30 +70,31 @@ module.exports = {
   usage: "help [comando|categoría|? término]",
   category: "utils",
 
-  async run({ client, msg, args, config }) {
-    const prefix = config?.prefix || ".";
+  async run({ client, msg, args }) {
+    const prefix = client.prefix;
     const query = args.join(" ").trim();
-    const categories = Array.from(client.categories).sort((a, b) =>
-      a.localeCompare(b, "es")
-    );
-    const allCommands = [...client.commands.values()];
+    const categories = [...client.categories]
+      .map((c) => String(c))
+      .sort((a, b) => a.localeCompare(b, "es"));
+
+    const all = [...client.commands.values()];
 
     if (query && !query.startsWith("?")) {
       const cmd = resolveCommand(client, query);
       if (cmd) {
-        const text = renderCommandBlock(prefix, cmd);
-        return sendChunked(msg, `Detalles del comando:\n\n${text}`);
+        return sendChunked(msg, `Detalles del comando:\n\n${renderCommandBlock(cmd, prefix)}`);
       }
 
       const category = categories.find((c) => normalize(c) === normalize(query));
       if (category) {
-        const list = allCommands
-          .filter((c) => (c.category || "misc") === category)
+        const list = all
+          .filter((c) => normalize(c.category || "misc") === normalize(category))
           .sort((a, b) => a.name.localeCompare(b.name, "es"));
+
         if (!list.length) {
           return sendChunked(msg, `No hay comandos en la categoría '${sanitize(category)}'.`);
         }
-        return sendChunked(msg, renderCategory(prefix, category, list));
+        return sendChunked(msg, renderCategory(category, list, prefix));
       }
 
       return sendChunked(msg, `❌ No encontré comando o categoría \`${sanitize(query)}\`.`);
@@ -117,11 +104,12 @@ module.exports = {
       const term = query.slice(1).trim();
       if (!term) return sendChunked(msg, "Uso: `help ? <término>`");
 
-      const normTerm = normalize(term);
-      const results = allCommands.filter((c) =>
-        normalize(c.name).includes(normTerm) ||
-        (c.aliases || []).some((a) => normalize(a).includes(normTerm)) ||
-        normalize(c.description || "").includes(normTerm)
+      const norm = normalize(term);
+      const results = all.filter(
+        (c) =>
+          normalize(c.name).includes(norm) ||
+          (c.aliases || []).some((a) => normalize(a).includes(norm)) ||
+          normalize(c.description || "").includes(norm)
       );
 
       if (!results.length) {
@@ -137,7 +125,7 @@ module.exports = {
 
       const blocks = [`Resultados para '${sanitize(term)}' (prefix: \`${prefix}\`)`];
       for (const [cat, list] of byCat.entries()) {
-        blocks.push(renderCategory(prefix, cat, list));
+        blocks.push(renderCategory(cat, list, prefix));
       }
 
       return sendChunked(msg, blocks.join("\n\n").trim());
@@ -146,19 +134,21 @@ module.exports = {
     const header = [
       `Misaki — Ayuda`,
       `Prefix: \`${prefix}\``,
-      `Comandos: ${allCommands.length} • Categorías: ${categories.length}`,
+      `Comandos: ${all.length} • Categorías: ${categories.length}`,
       `Tips: \`${prefix}help <comando>\`, \`${prefix}help <categoría>\`, \`${prefix}help ? <término>\``,
-      ""
+      "",
     ].join("\n");
 
     await sendChunked(msg, header);
 
     for (const category of categories) {
-      const list = allCommands
-        .filter((c) => (c.category || "misc") === category)
+      const list = all
+        .filter((c) => normalize(c.category || "misc") === normalize(category))
         .sort((a, b) => a.name.localeCompare(b.name, "es"));
-      if (!list.length) continue;
-      await sendChunked(msg, renderCategory(prefix, category, list));
+
+      if (list.length) {
+        await sendChunked(msg, renderCategory(category, list, prefix));
+      }
     }
   },
 };

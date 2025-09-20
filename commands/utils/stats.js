@@ -10,17 +10,31 @@ module.exports = {
   async run({ client, msg }) {
     const mem = (process.memoryUsage().rss / 1024 / 1024).toFixed(1);
     const cmds = client.stats.commandsUsed;
-    const uptime = ((Date.now() - client.stats.startedAt) / 1000 / 60).toFixed(1);
+    const uptimeMs = Date.now() - client.stats.startedAt;
 
-    const content =
-      "```md\n" +
-      `# Misaki — Stats\n` +
-      `Usuario: ${client.user.tag} (${client.user.id})\n` +
-      `Comandos usados: ${cmds}\n` +
-      `Memoria: ${mem} MB\n` +
-      `Uptime: ${uptime} min\n` +
-      "```";
+    const days = Math.floor(uptimeMs / (1000 * 60 * 60 * 24));
+    const hours = Math.floor(uptimeMs / (1000 * 60 * 60)) % 24;
+    const minutes = Math.floor(uptimeMs / (1000 * 60)) % 60;
+    const seconds = Math.floor(uptimeMs / 1000) % 60;
 
+    const uptime = [
+      days ? `${days}d` : null,
+      hours ? `${hours}h` : null,
+      minutes ? `${minutes}m` : null,
+      `${seconds}s`,
+    ]
+      .filter(Boolean)
+      .join(" ");
+
+    const lines = [
+      "# Misaki — Stats",
+      `Usuario: ${client.user.tag} (${client.user.id})`,
+      `Comandos usados: ${cmds}`,
+      `Memoria: ${mem} MB`,
+      `Uptime: ${uptime}`,
+    ];
+
+    const content = ["```md", ...lines, "```"].join("\n");
     await sendTemp(msg, content);
   },
 };

@@ -1,6 +1,4 @@
-require("@dotenvx/dotenvx/config");
-
-const { Client } = require("discord.js-selfbot-v13");
+const { Client, Collection } = require("discord.js-selfbot-v13");
 const fs = require("fs");
 const path = require("path");
 
@@ -13,7 +11,6 @@ const PREFIX = config.prefix || ".";
 
 const token = process.env.DISCORD_TOKEN;
 const tokenPattern = /^[A-Za-z0-9_\-]{20,}\.[A-Za-z0-9_\-]{6,}\.[A-Za-z0-9_\-]{27,}$/;
-
 if (!token || !tokenPattern.test(token)) {
   logger.error("❌ Token inválido o ausente en .env");
   process.exit(1);
@@ -26,11 +23,11 @@ if (!fs.existsSync(commandsPath)) {
 }
 
 const client = new Client({ checkUpdate: false });
-client.commands = new Map();
-client.aliases = new Map();
+client.prefix = PREFIX;
+client.commands = new Collection();
+client.aliases = new Collection();
 client.categories = new Set();
 client.stats = { commandsUsed: 0, startedAt: Date.now() };
-
 
 function loadCommands() {
   const start = Date.now();
@@ -44,13 +41,13 @@ function loadCommands() {
     .map((d) => d.name);
 
   for (const category of categories) {
-    client.categories.add(category);
     const files = fs
       .readdirSync(path.join(commandsPath, category))
       .filter((f) => f.endsWith(".js"));
 
     for (const file of files) {
       const fullPath = path.join(commandsPath, category, file);
+
       try {
         delete require.cache[require.resolve(fullPath)];
         const cmd = require(fullPath);
@@ -59,17 +56,19 @@ function loadCommands() {
           logger.warn(`⚠️ Ignorado '${file}' (falta name/run)`);
           continue;
         }
+
         if (client.commands.has(cmd.name)) {
           logger.warn(`⚠️ Comando duplicado '${cmd.name}'`);
           continue;
         }
 
-        cmd.category = category;
+        cmd.category = (cmd.category || category || "misc").toLowerCase();
         cmd.aliases = Array.isArray(cmd.aliases) ? cmd.aliases : [];
         cmd.ownerOnly = !!cmd.ownerOnly;
         cmd.guildOnly = !!cmd.guildOnly;
 
         client.commands.set(cmd.name, cmd);
+        client.categories.add(cmd.category);
 
         for (const alias of cmd.aliases) {
           if (client.aliases.has(alias)) {
@@ -91,7 +90,7 @@ function loadCommands() {
   );
 }
 
-fs.watch(commandsPath, { recursive: true }, (event, file) => {
+fs.watch(commandsPath, { recursive: true }, (_event, file) => {
   if (file?.endsWith(".js")) {
     logger.info(`♻️ Cambio detectado en '${file}', recargando comandos...`);
     try {
@@ -105,9 +104,9 @@ fs.watch(commandsPath, { recursive: true }, (event, file) => {
 client.on("messageCreate", async (msg) => {
   try {
     if (!msg.author || msg.author.id !== client.user.id) return;
-    if (!msg.content.startsWith(PREFIX)) return;
+    if (!msg.content.startsWith(client.prefix)) return;
 
-    const args = msg.content.slice(PREFIX.length).trim().split(/\s+/);
+    const args = msg.content.slice(client.prefix.length).trim().split(/\s+/);
     const name = args.shift()?.toLowerCase();
     if (!name) return;
 
@@ -138,7 +137,9 @@ client.on("messageCreate", async (msg) => {
 
 client.once("ready", async () => {
   logger.info(`🤖 Conectado como ${client.user.tag} (${client.user.id})`);
-  logger.info(`📊 Memoria usada: ${(process.memoryUsage().rss / 1024 / 1024).toFixed(1)} MB`);
+  logger.info(
+    `📊 Memoria usada: ${(process.memoryUsage().rss / 1024 / 1024).toFixed(1)} MB`
+  );
   await setupPresence(client, config.presence);
 });
 

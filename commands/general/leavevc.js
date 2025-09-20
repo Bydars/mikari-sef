@@ -8,25 +8,22 @@ module.exports = {
   usage: "leavevc",
   category: "general",
 
-  async run({ client, msg, args, config }) {
-    const prefix = config?.prefix || ".";
-
+  async run({ msg, logger }) {
     if (!msg.guild) {
-      return sendTemp(msg, "❌ Este comando solo funciona dentro de servidores.");
+      return sendTemp(msg, "❌ Este comando solo funciona en servidores.");
     }
 
     const connection = getVoiceConnection(msg.guild.id);
-
     if (!connection) {
-      return sendTemp(msg, "❌ No estoy conectado a ningún canal de voz en este servidor.");
+      return sendTemp(msg, "❌ No estoy en ningún canal de voz en este servidor.");
     }
 
     try {
       connection.destroy();
-      await sendTemp(msg, "👋 Desconectado del canal de voz correctamente.");
+      await sendTemp(msg, "👋 Desconectado del canal de voz.");
     } catch (err) {
-      console.error("💥 Error al salir del VC:", err);
-      await sendTemp(msg, "❌ Ocurrió un error al intentar salir del canal de voz.");
+      logger.error("💥 Error al salir del canal de voz:", err);
+      await sendTemp(msg, "❌ Ocurrió un error al desconectarme del canal de voz.");
     }
   },
 };

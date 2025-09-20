@@ -4,8 +4,8 @@
   "description": "��#\u0000 \u0000m\u0000i\u0000k\u0000a\u0000r\u0000i\u0000\r\u0000 \u0000",
   "main": "index.js",
   "scripts": {
-  "start": "node index.js",
-  "dev": "dotenvx run node index.js"
+  "start": "dotenvx run -- node index.js",
+  "dev": "dotenvx run -- nodemon index.js"
 },
   "repository": {
     "type": "git",
@@ -25,6 +25,7 @@
     "dotenv": "^17.2.2"
   },
   "devDependencies": {
-    "@dotenvx/dotenvx": "^1.50.1"
+    "@dotenvx/dotenvx": "^1.50.1",
+    "nodemon": "^3.1.10"
   }
 }

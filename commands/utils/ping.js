@@ -7,13 +7,15 @@ module.exports = {
   usage: "ping",
   category: "utils",
 
-  async run({ client, msg }) {
-    const start = Date.now();
-    const tempMsg = await sendTemp(msg, "🏓 Calculando...");
+  async run({ msg }) {
+    const sentAt = Date.now();
+    const placeholder = await sendTemp(msg, "🏓 Calculando...");
 
-    if (tempMsg) {
-      const latency = Date.now() - start;
-      await tempMsg.edit(`🏓 Pong! Latencia: \`${latency}ms\``).catch(() => {});
-    }
+    if (!placeholder) return;
+
+    const latency = Date.now() - sentAt;
+    const content = `🏓 Pong! Latencia: \`${latency}ms\``;
+
+    await placeholder.edit(content).catch(() => null);
   },
 };
