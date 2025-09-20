@@ -10,7 +10,7 @@ module.exports = {
   aliases: ["vc", "vjoin"],
   description: "Conecta el selfbot a un canal de voz del servidor por ID. Reintenta si es expulsado.",
   usage: "joinvc <canal_id>",
-  category: "utils",
+  category: "genral",
 
   async run({ client, msg, args, config }) {
     const MAX_RETRIES = 5;

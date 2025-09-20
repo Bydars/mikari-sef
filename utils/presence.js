@@ -1,79 +1,34 @@
-const { RichPresence, CustomStatus, SpotifyRPC } = require("discord.js-selfbot-v13");
+const {
+  RichPresence,
+  CustomStatus,
+  SpotifyRPC,
+} = require("discord.js-selfbot-v13");
+
 const logger = require("./logger");
 
 async function setupPresence(client, presenceConfig) {
   if (!presenceConfig || !presenceConfig.enabled) return;
 
+  const activities = [];
+
   try {
-    const activities = [];
     if (presenceConfig.mode === "rich") {
-      let largeImg = presenceConfig.largeImage;
-
-      // Si la imagen es externa, pedirla al CDN de Discord
-      if (largeImg?.startsWith("http")) {
-        try {
-          const res = await RichPresence.getExternal(
-            client,
-            presenceConfig.applicationId,
-            largeImg
-          );
-          if (res?.[0]) largeImg = res[0].external_asset_path;
-        } catch (e) {
-          logger.warn(`⚠️ No se pudo cargar imagen externa para RichPresence: ${e.message}`);
-        }
-      }
-
-      // Tipo de actividad: PLAYING, STREAMING, LISTENING, WATCHING, COMPETING (configurable en config)
-      const type = presenceConfig.type?.toUpperCase() || "PLAYING";
-
-      const rp = new RichPresence(client)
-        .setApplicationId(presenceConfig.applicationId)
-        .setType(type)
-        .setName(presenceConfig.name || "Misaki")
-        .setDetails(presenceConfig.details || "")
-        .setState(presenceConfig.state || "")
-        .setURL(type === "STREAMING" ? presenceConfig.url : undefined) // URL solo si es STREAMING
-        .setStartTimestamp(Date.now())
-        .setAssetsLargeImage(largeImg)
-        .setAssetsLargeText(presenceConfig.largeText || "")
-        .setAssetsSmallImage(presenceConfig.smallImage || "")
-        .setAssetsSmallText(presenceConfig.smallText || "")
-        .setPlatform(presenceConfig.platform || "desktop");
-
-      activities.push(rp);
+      const rp = await createRichPresence(client, presenceConfig);
+      if (rp) activities.push(rp);
     }
 
     if (presenceConfig.custom) {
-      const custom = new CustomStatus(client)
-        .setEmoji(presenceConfig.custom.emoji || "⭐")
-        .setState(presenceConfig.custom.text || "");
-      activities.push(custom);
+      const customStatus = createCustomStatus(client, presenceConfig.custom);
+      if (customStatus) activities.push(customStatus);
     }
 
-    // spotify rpc
     if (presenceConfig.spotify) {
-      const sp = presenceConfig.spotify;
-
-      if (!sp.track || !sp.artist) {
-        logger.warn("⚠️ SpotifyRPC configurado pero faltan 'track' o 'artist'");
-      } else {
-        const spotify = new SpotifyRPC(client)
-          .setAssetsLargeImage(sp.largeImage)
-          .setAssetsSmallImage(sp.smallImage)
-          .setAssetsLargeText(sp.album || "")
-          .setState(sp.artist)
-          .setDetails(sp.track)
-          .setStartTimestamp(Date.now())
-          .setEndTimestamp(Date.now() + (sp.duration || 180) * 1000)
-          .setSongId(sp.songId || "")
-          .setAlbumId(sp.albumId || "")
-          .setArtistIds(...(sp.artistIds || []));
-
-        activities.push(spotify);
-      }
+      const spotifyStatus = createSpotifyRPC(client, presenceConfig.spotify);
+      if (spotifyStatus) activities.push(spotifyStatus);
     }
-    
+
     const status = presenceConfig.status || "online";
+
     client.user.setPresence({
       activities,
       status,
@@ -81,11 +36,83 @@ async function setupPresence(client, presenceConfig) {
     });
 
     logger.info(
-      `🎭 Presencia RPC establecida con ${activities.length} actividades (estado=${status})`
+      `🎭 Presencia configurada (${status}) con ${activities.length} actividad(es)`
     );
   } catch (err) {
-    logger.error("❌ Error configurando presencia RPC:", err);
+    logger.error("❌ Error al configurar la presencia:", err);
   }
+}
+
+async function createRichPresence(client, config) {
+  if (!config.applicationId) {
+    logger.warn("⚠️ RichPresence: falta 'applicationId'");
+    return null;
+  }
+
+  let largeImg = config.largeImage;
+
+  // Si se provee una imagen externa, intentar obtenerla desde Discord CDN
+  if (largeImg?.startsWith("http")) {
+    try {
+      const res = await RichPresence.getExternal(client, config.applicationId, largeImg);
+      if (res?.[0]) {
+        largeImg = res[0].external_asset_path;
+        logger.info("🌐 Imagen externa RichPresence cargada exitosamente.");
+      } else {
+        logger.warn("⚠️ No se pudo resolver imagen externa para RichPresence.");
+      }
+    } catch (e) {
+      logger.warn(`⚠️ Error cargando imagen externa: ${e.message}`);
+    }
+  }
+
+  const type = config.type?.toUpperCase() || "PLAYING";
+
+  return new RichPresence(client)
+    .setApplicationId(config.applicationId)
+    .setType(type)
+    .setName(config.name)
+    .setDetails(config.details)
+    .setState(config.state)
+    .setURL(type === "STREAMING" ? config.url : undefined)
+    .setStartTimestamp(Date.now())
+    .setAssetsLargeImage(largeImg)
+    .setAssetsLargeText(config.largeText)
+    .setAssetsSmallImage(config.smallImage)
+    .setAssetsSmallText(config.smallText)
+    .setPlatform(config.platform || "desktop");
+}
+
+function createCustomStatus(client, customCfg) {
+  const text = customCfg.text?.trim();
+  if (!text && !customCfg.emoji) return null;
+
+  return new CustomStatus(client)
+    .setState(text || "")
+    .setEmoji(customCfg.emoji || "");
+}
+
+function createSpotifyRPC(client, sp) {
+  const { track, artist } = sp;
+
+  if (!track || !artist) {
+    logger.warn("⚠️ SpotifyRPC requiere 'track' y 'artist'");
+    return null;
+  }
+
+  const now = Date.now();
+
+  return new SpotifyRPC(client)
+    .setAssetsLargeImage(sp.largeImage)
+    .setAssetsSmallImage(sp.smallImage)
+    .setAssetsLargeText(sp.album)
+    .setState(artist)
+    .setDetails(track)
+    .setStartTimestamp(now)
+    .setEndTimestamp(now + (sp.duration || 180) * 1000)
+    .setSongId(sp.songId)
+    .setAlbumId(sp.albumId)
+    .setArtistIds(...(sp.artistIds || []));
 }
 
 module.exports = { setupPresence };

@@ -6,7 +6,7 @@ module.exports = {
   aliases: ["lvc", "vcleave", "disconnect"],
   description: "Desconecta el selfbot del canal de voz actual.",
   usage: "leavevc",
-  category: "utils",
+  category: "general",
 
   async run({ client, msg, args, config }) {
     const prefix = config?.prefix || ".";

@@ -1,4 +1,5 @@
-require("dotenv").config();
+require("@dotenvx/dotenvx/config");
+
 const { Client } = require("discord.js-selfbot-v13");
 const fs = require("fs");
 const path = require("path");
@@ -10,8 +11,11 @@ const config = require("./configs/config.json");
 
 const PREFIX = config.prefix || ".";
 
-if (!process.env.DISCORD_TOKEN || process.env.DISCORD_TOKEN.length < 20) {
-  logger.error("❌ FALTA DISCORD_TOKEN en .env");
+const token = process.env.DISCORD_TOKEN;
+const tokenPattern = /^[A-Za-z0-9_\-]{20,}\.[A-Za-z0-9_\-]{6,}\.[A-Za-z0-9_\-]{27,}$/;
+
+if (!token || !tokenPattern.test(token)) {
+  logger.error("❌ Token inválido o ausente en .env");
   process.exit(1);
 }
 
@@ -22,55 +26,48 @@ if (!fs.existsSync(commandsPath)) {
 }
 
 const client = new Client({ checkUpdate: false });
-
 client.commands = new Map();
 client.aliases = new Map();
 client.categories = new Set();
-client.stats = {
-  commandsUsed: 0,
-  startedAt: Date.now(),
-};
+client.stats = { commandsUsed: 0, startedAt: Date.now() };
 
-function autoload() {
+
+function loadCommands() {
   const start = Date.now();
-
   client.commands.clear();
   client.aliases.clear();
   client.categories.clear();
 
-  const cats = fs
+  const categories = fs
     .readdirSync(commandsPath, { withFileTypes: true })
     .filter((d) => d.isDirectory())
     .map((d) => d.name);
 
-  for (const cat of cats) {
-    client.categories.add(cat);
-
+  for (const category of categories) {
+    client.categories.add(category);
     const files = fs
-      .readdirSync(path.join(commandsPath, cat))
+      .readdirSync(path.join(commandsPath, category))
       .filter((f) => f.endsWith(".js"));
 
-    for (const f of files) {
-      const full = path.join(commandsPath, cat, f);
-
+    for (const file of files) {
+      const fullPath = path.join(commandsPath, category, file);
       try {
-        delete require.cache[require.resolve(full)];
-        const cmd = require(full);
+        delete require.cache[require.resolve(fullPath)];
+        const cmd = require(fullPath);
 
         if (!cmd?.name || typeof cmd.run !== "function") {
-          logger.warn(`⚠️ Ignorando '${f}' en [${cat}] (falta name/run)`);
+          logger.warn(`⚠️ Ignorado '${file}' (falta name/run)`);
           continue;
         }
-
         if (client.commands.has(cmd.name)) {
-          logger.warn(`⚠️ Comando duplicado '${cmd.name}' en [${cat}]`);
+          logger.warn(`⚠️ Comando duplicado '${cmd.name}'`);
           continue;
         }
 
-        cmd.category = cat;
+        cmd.category = category;
         cmd.aliases = Array.isArray(cmd.aliases) ? cmd.aliases : [];
-        cmd.ownerOnly = cmd.ownerOnly ?? false;
-        cmd.guildOnly = cmd.guildOnly ?? false;
+        cmd.ownerOnly = !!cmd.ownerOnly;
+        cmd.guildOnly = !!cmd.guildOnly;
 
         client.commands.set(cmd.name, cmd);
 
@@ -82,7 +79,7 @@ function autoload() {
           client.aliases.set(alias, cmd.name);
         }
       } catch (err) {
-        logger.error(`❌ Error cargando '${f}' en [${cat}]: ${err.message}`);
+        logger.error(`❌ Error cargando '${file}' en [${category}]: ${err.message}`);
       }
     }
   }
@@ -90,17 +87,17 @@ function autoload() {
   buildTree(client, config);
   const elapsed = ((Date.now() - start) / 1000).toFixed(2);
   logger.info(
-    `✅ ${client.commands.size} comandos en ${client.categories.size} categorías cargados en ${elapsed}s`
+    `✅ Cargados ${client.commands.size} comandos en ${client.categories.size} categorías (${elapsed}s)`
   );
 }
 
-fs.watch(commandsPath, { recursive: true }, (evt, file) => {
-  if (file && file.endsWith(".js")) {
-    logger.info(`♻️ Cambio detectado en ${file}, recargando comandos...`);
+fs.watch(commandsPath, { recursive: true }, (event, file) => {
+  if (file?.endsWith(".js")) {
+    logger.info(`♻️ Cambio detectado en '${file}', recargando comandos...`);
     try {
-      autoload();
-    } catch (e) {
-      logger.error("❌ Error en auto-reload:", e);
+      loadCommands();
+    } catch (err) {
+      logger.error("❌ Error en recarga:", err);
     }
   }
 });
@@ -125,39 +122,41 @@ client.on("messageCreate", async (msg) => {
       return msg.react("🏠").catch(() => {});
     }
 
-    logger.tag(["CMD", cmd.name], "INFO", undefined, `Ejecutando por ${msg.author.tag}`);
-
+    logger.tag(["CMD", cmd.name], "INFO", undefined, `Ejecutado por ${msg.author.tag}`);
     const start = Date.now();
+
     await cmd.run({ client, msg, args, config, logger });
-    const elapsed = Date.now() - start;
 
     client.stats.commandsUsed++;
+    const elapsed = Date.now() - start;
     logger.tag(["CMD", cmd.name], "INFO", undefined, `Finalizado en ${elapsed}ms`);
-  } catch (e) {
-    logger.error("❌ Handler error:", e);
+  } catch (err) {
+    logger.error("❌ Error al ejecutar comando:", err);
     msg.react("⚠️").catch(() => {});
   }
 });
 
 client.once("ready", async () => {
-  logger.info(`🤖 Misaki lista como ${client.user.tag} (${client.user.id})`);
-  logger.info(
-    `📊 Uso: memoria ${(process.memoryUsage().rss / 1024 / 1024).toFixed(1)} MB`
-  );
-
+  logger.info(`🤖 Conectado como ${client.user.tag} (${client.user.id})`);
+  logger.info(`📊 Memoria usada: ${(process.memoryUsage().rss / 1024 / 1024).toFixed(1)} MB`);
   await setupPresence(client, config.presence);
 });
 
-process.on("unhandledRejection", (r) => logger.error("❌ Unhandled Rejection:", r));
-process.on("uncaughtException", (e) => logger.error("❌ Uncaught Exception:", e));
+process.on("unhandledRejection", (r) =>
+  logger.error("❌ Unhandled Rejection:", r)
+);
+process.on("uncaughtException", (e) =>
+  logger.error("❌ Uncaught Exception:", e)
+);
+
 process.on("SIGINT", () => {
-  logger.warn("🛑 Interrupción recibida (SIGINT). Cerrando Misaki...");
+  logger.warn("🛑 SIGINT recibido. Saliendo...");
   process.exit(0);
 });
 process.on("SIGTERM", () => {
-  logger.warn("🛑 Señal SIGTERM recibida. Cerrando Misaki...");
+  logger.warn("🛑 SIGTERM recibido. Saliendo...");
   process.exit(0);
 });
 
-autoload();
-client.login(process.env.DISCORD_TOKEN);
+loadCommands();
+client.login(token);

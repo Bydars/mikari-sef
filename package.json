@@ -4,8 +4,9 @@
   "description": "��#\u0000 \u0000m\u0000i\u0000k\u0000a\u0000r\u0000i\u0000\r\u0000 \u0000",
   "main": "index.js",
   "scripts": {
-    "test": "echo \"Error: no test specified\" && exit 1"
-  },
+  "start": "node index.js",
+  "dev": "dotenvx run node index.js"
+},
   "repository": {
     "type": "git",
     "url": "git+https://github.com/Bydars/mikari.git"
@@ -22,5 +23,8 @@
     "@snazzah/davey": "^0.1.6",
     "discord.js-selfbot-v13": "^3.7.0",
     "dotenv": "^17.2.2"
+  },
+  "devDependencies": {
+    "@dotenvx/dotenvx": "^1.50.1"
   }
 }

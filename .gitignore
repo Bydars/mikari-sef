@@ -1,8 +1,9 @@
 # Folders
 /node_modules/
 /logs/
+/utils/audios/**
 
 # Files
 .env
 COMMANDS.md
-
+!utils/audios/placeholder
