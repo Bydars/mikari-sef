@@ -32,9 +32,15 @@ client.stats = { commandsUsed: 0, startedAt: Date.now() };
 Message.prototype.temp = async function (content, timeout = 5000) {
   try {
     const sent = await this.channel.send(content);
-    setTimeout(() => {
-      if (!sent.deleted) sent.delete().catch(() => {});
+
+    setTimeout(async () => {
+      try {
+        await this.channel.messages.fetch(sent.id);
+        await sent.delete().catch(() => {});
+      } catch {
+      }
     }, timeout);
+
     return sent;
   } catch (err) {
     console.error("❌ Error en msg.temp:", err);
