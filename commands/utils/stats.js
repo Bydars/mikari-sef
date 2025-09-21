@@ -14,16 +14,8 @@ module.exports = {
       const hours = Math.floor(uptimeMs / 3600000) % 24;
       const minutes = Math.floor(uptimeMs / 60000) % 60;
       const seconds = Math.floor(uptimeMs / 1000) % 60;
-
-      const uptime = [
-        days ? `${days}d` : null,
-        hours ? `${hours}h` : null,
-        minutes ? `${minutes}m` : null,
-        `${seconds}s`,
-      ]
-        .filter(Boolean)
-        .join(" ");
-
+      const uptime = `${days}d ${hours}h ${minutes}m ${seconds}s`;
+      
       const lines = [
         "# Misaki — Stats",
         `Usuario: ${client.user.tag} (${client.user.id})`,

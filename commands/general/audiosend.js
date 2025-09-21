@@ -26,7 +26,7 @@ module.exports = {
         const files = fs
           .readdirSync(audioDir)
           .filter((f) => f.toLowerCase().endsWith(".mp3"))
-          .map((f) => f.replace(/\.mp3$/i, ""));
+          .map((f) => f.replaceAll(".mp3", ""));
 
         if (!files.length) {
           return msg.temp("❌ No hay audios disponibles.", 4000);

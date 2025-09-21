@@ -21,13 +21,14 @@ module.exports = {
       const files = fs
         .readdirSync(audioDir)
         .filter((f) => f.toLowerCase().endsWith(".mp3"))
-        .map((f) => f.replace(/\.mp3$/i, ""));
+        .map((f) => f.replaceAll(".mp3", ""));
 
       if (!files.length) {
         return msg.temp("❌ No hay audios disponibles.", 4000);
       }
 
       const pages = [];
+      
       for (let i = 0; i < files.length; i += PAGE_SIZE) {
         pages.push(files.slice(i, i + PAGE_SIZE));
       }

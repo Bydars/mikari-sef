@@ -32,11 +32,11 @@ const CONFIG = {
 };
 
 const formatTime = () => {
-  const d = new Date();
+  const date = new Date();
   return (
-    d.toTimeString().split(" ")[0] +
+    date.toTimeString().split(" ")[0] +
     "." +
-    d.getMilliseconds().toString().padStart(3, "0")
+    date.getMilliseconds().toString().padStart(3, "0")
   );
 };
 

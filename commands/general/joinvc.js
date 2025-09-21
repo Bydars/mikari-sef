@@ -13,7 +13,6 @@ module.exports = {
 
   async run({ client, msg, args, logger }) {
     const MAX_RETRIES = 5;
-
     try {
       if (!msg.guild) {
         return msg.temp("❌ Este comando solo puede usarse en servidores.", 4000);

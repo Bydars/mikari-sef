@@ -31,9 +31,7 @@ module.exports = {
   category: "fun",
 
   async run({ msg, args }) {
-    try {
-      await msg.delete().catch(() => {});
-    } catch {}
+    await msg.delete().catch(() => {});
 
     const question = args.join(" ").trim();
     if (!question || !question.endsWith("?")) {
