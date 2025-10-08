@@ -12,7 +12,6 @@ Construido con `discord.js-selfbot-v13@3.7`, Misaki incorpora comandos de voz, s
 - ✅ Sistema modular de comandos (`/commands/[categoría]/comando.js`)
 - 🎧 Conexión a canales de voz (`.joinvc`, `.leavevc`)
 - 📚 `help` inteligente por categoría, alias, o palabra clave
-- 🧹 Mensajes temporales autodestructivos (`sendTemp.js`)
 - 🎤 Comando `.sendaudio` con generación real de forma de onda (waveform)
 - 🧠 Carga dinámica de comandos y aliases desde el sistema de archivos
 - 🌐 Soporte multiplataforma (Windows y Linux) para FFmpeg
