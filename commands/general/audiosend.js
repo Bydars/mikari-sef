@@ -1,51 +1,112 @@
 const fs = require("fs");
 const path = require("path");
+const { PassThrough } = require("stream");
 const { MessageAttachment } = require("discord.js-selfbot-v13");
+const ffmpeg = require("fluent-ffmpeg");
+const wav = require("wav-decoder");
+const mm = require("music-metadata");
 
 let lastAudio = null;
+
+const isWin = process.platform === "win32";
+const ffmpegPath = isWin
+  ? path.resolve("utils", "libs", "ffmpeg", "win", "bin", "ffmpeg.exe")
+  : path.resolve("utils", "libs", "ffmpeg", "linux", "bin", "ffmpeg");
+
+ffmpeg.setFfmpegPath(ffmpegPath);
+
+function decodeWavFromMp3(filePath) {
+  return new Promise((resolve, reject) => {
+    const output = new PassThrough();
+    const chunks = [];
+
+    ffmpeg(filePath)
+      .format("wav")
+      .on("error", err => reject(new Error("FFmpeg error: " + err.message)))
+      .pipe(output);
+
+    output.on("data", chunk => chunks.push(chunk));
+    output.on("end", () => {
+      const buffer = Buffer.concat(chunks);
+      wav.decode(buffer).then(resolve).catch(err => {
+        reject(new Error("WAV decode error: " + err.message));
+      });
+    });
+  });
+}
+
+async function generateWaveform(filePath) {
+  try {
+    const { format } = await mm.parseFile(filePath);
+    const duration = Math.max(1, Math.round(format.duration || 2));
+    const audio = await decodeWavFromMp3(filePath);
+    const channel = audio.channelData[0];
+    const totalSamples = channel.length;
+    const step = Math.floor(totalSamples / 64);
+
+    const waveform = Array.from({ length: 64 }, (_, i) => {
+      const start = i * step;
+      const end = Math.min(start + step, totalSamples);
+      const avg =
+        channel.slice(start, end).reduce((a, b) => a + Math.abs(b), 0) /
+        (end - start);
+      return Math.min(255, Math.floor(avg * 512));
+    });
+
+    return {
+      waveform: Buffer.from(waveform).toString("base64"),
+      duration,
+    };
+  } catch {
+    return {
+      waveform: "AAAAAAAAAAAA",
+      duration: 2,
+    };
+  }
+}
 
 module.exports = {
   name: "sendaudio",
   aliases: ["saudio", "voice"],
-  description:
-    "Envía un mensaje de voz. Si no das nombre, se elige uno aleatorio no repetido.",
+  description: "Envía un mensaje de voz con waveform real.",
   usage: "sendaudio [nombre]",
   category: "general",
 
   async run({ msg, args, logger }) {
     try {
-      if (msg.deletable) msg.delete().catch(() => {});
+      if (msg.deletable) await msg.delete().catch(() => {});
 
-      const audioDir = path.join(process.cwd(), "utils", "audios");
+      const audioDir = path.resolve("utils", "audios");
       if (!fs.existsSync(audioDir)) {
-        return msg.temp("❌ Carpeta `utils/audios` no encontrada.", 4000);
+        return msg.temp("❌ No existe la carpeta `utils/audios`.", 4000);
       }
 
-      let name = args[0];
+      const audioList = fs
+        .readdirSync(audioDir)
+        .filter(f => f.endsWith(".mp3"))
+        .map(f => f.replace(/\.mp3$/, ""));
+
+      if (!audioList.length) {
+        return msg.temp("❌ No hay audios disponibles.", 4000);
+      }
+
+      let name = args[0]?.toLowerCase();
       if (!name) {
-        const files = fs
-          .readdirSync(audioDir)
-          .filter((f) => f.toLowerCase().endsWith(".mp3"))
-          .map((f) => f.replaceAll(".mp3", ""));
-
-        if (!files.length) {
-          return msg.temp("❌ No hay audios disponibles.", 4000);
-        }
-
-        const candidates = files.filter((n) => n !== lastAudio);
-        const options = candidates.length > 0 ? candidates : files;
-        name = options[Math.floor(Math.random() * options.length)];
-        lastAudio = name;
+        const pool = audioList.filter(f => f !== lastAudio);
+        const choices = pool.length ? pool : audioList;
+        name = choices[Math.floor(Math.random() * choices.length)];
       }
 
       const filePath = path.join(audioDir, `${name}.mp3`);
       if (!fs.existsSync(filePath)) {
-        return msg.temp(`❌ No se encontró: \`${name}.mp3\``, 4000);
+        return msg.temp(`❌ Audio no encontrado: \`${name}.mp3\``, 4000);
       }
 
+      const { waveform, duration } = await generateWaveform(filePath);
+
       const attachment = new MessageAttachment(filePath, `${name}.ogg`, {
-        waveform: "AAAAAAAAAAAA",
-        duration_secs: 2,
+        waveform,
+        duration_secs: duration,
       });
 
       await msg.channel.send({
@@ -53,10 +114,11 @@ module.exports = {
         flags: "IS_VOICE_MESSAGE",
       });
 
-      logger.info(`✅ Audio enviado: ${name}.mp3`);
+      lastAudio = name;
+      logger.info(`🎧 Audio enviado: ${name}.mp3 (${duration}s)`);
     } catch (err) {
       logger.error("❌ Error al enviar audio:", err);
-      await msg.temp("❌ Error al enviar el audio.", 4000);
+      await msg.temp("❌ Hubo un error al enviar el audio.", 4000);
     }
   },
 };

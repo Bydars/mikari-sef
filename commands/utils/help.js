@@ -2,7 +2,6 @@ const CAT_ICONS = {
   general: "🧭",
   utils: "🛠️",
   fun: "🎲",
-  media: "🖼️",
 };
 
 const LIMIT = 1900;

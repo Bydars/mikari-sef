@@ -1,21 +1,22 @@
 # 💠 Misaki — Discord Selfbot
 
 **Misaki** es un selfbot modular, rápido y seguro para Discord, diseñado para uso personal.  
-Construido con `discord.js-selfbot-v13@3.7`, Misaki incorpora comandos de voz, sistema de ayuda avanzado, respuesta automática, mensajes temporales y una arquitectura extensible con soporte de categorías y alias.
+Construido con `discord.js-selfbot-v13@3.7`, Misaki incorpora comandos de voz, sistema de ayuda avanzado, mensajes temporales, presencia personalizada, comandos de sistema, y soporte para mensajes de voz con waveform real generado dinámicamente.
 
-> ⚠️ Este proyecto está destinado exclusivamente para fines educativos y de uso personal. No lo uses para infringir las normas de Discord.
+> ⚠️ Este proyecto está destinado exclusivamente a fines educativos y personales. El uso de selfbots **viola los Términos de Servicio de Discord**.
 
 ---
 
 ## 🚀 Características
 
-- ✅ **Sistema modular de comandos** (`/commands/subcarpeta`)
-- 🎧 **Conexión a canales de voz por ID** (`joinvc`, `leavevc`)
-- 📚 **Comando `help` avanzado**: búsqueda por término, alias o categoría
-- ⏱️ **Mensajes temporales** autodestructivos (`sendTemp.js`)
-- 💻 **Comandos de sistema**: `ping`, `uptime`, `stats` ...
-- 🧠 **Carga dinámica** de comandos y aliases
-- 🌐 Basado en `CommonJS` para compatibilidad y control
+- ✅ Sistema modular de comandos (`/commands/[categoría]/comando.js`)
+- 🎧 Conexión a canales de voz (`.joinvc`, `.leavevc`)
+- 📚 `help` inteligente por categoría, alias, o palabra clave
+- 🧹 Mensajes temporales autodestructivos (`sendTemp.js`)
+- 🎤 Comando `.sendaudio` con generación real de forma de onda (waveform)
+- 🧠 Carga dinámica de comandos y aliases desde el sistema de archivos
+- 🌐 Soporte multiplataforma (Windows y Linux) para FFmpeg
+- 🔐 Token aislado en `.env` y configuración separada en `configs/config.json`
 
 ---
 
@@ -23,78 +24,90 @@ Construido con `discord.js-selfbot-v13@3.7`, Misaki incorpora comandos de voz, s
 
 ```bash
 git clone https://github.com/Bydars/mikari-self.git
+cd mikari-self
 npm install
 ```
+
 ---
 
 ## ⚙️ Configuración
 
-1. Crea un archivo `.env` en la raíz del proyecto con tu token:
+### 1. Token
+
+Renombra el archivo `example.env` a `.env`:
 
 ```env
-DISCORD_TOKEN=tu_token
+DISCORD_TOKEN=Token
 ```
 
-2. Edita `configs/config.json` con tus parámetros personalizados:
+### 2. Presencia personalizada
 
-```json
-{
-  "prefix": ".",
-  "presence": {
-    "enabled": true,
-    "mode": "rich",
-    "type": "STREAMING",
-    "status": "idle",
-    "applicationId": "367827983903490050",
-    "name": "Wand Services",
-    "details": "Wand Services",
-    "state": "Chilling",
-    "url": "https://www.twitch.tv/misaki",
-    "largeImage": "https://i.pinimg.com/736x/f3/0d/86/f30d86c46fc41d8f3b837d2ea067399d.jpg",
-    "largeText": "Idle mode",
-    "smallImage": "373370493127884800",
-    "smallText": "Coded by Bydars",
-    "platform": "desktop",
+Edita `configs/config.json` para configurar tu presencia, actividad, tipo de bot, etc. procura leer para hacer todo como se debe [Setup](configs/README.md)
 
-    "custom": {
-      "emoji": "🌙",
-      "text": "Misaki en chill mode"
-    },
+---
 
-    "spotify": {
-      "track": "Ponte Loquita",
-      "artist": "Katteyes; Kidd Voodoo",
-      "album": "Ponte Loquita",
-      "duration": 183,
-      "songId": "0Lahr7sUDdtYnX3n3KobR6",
-      "albumId": "23x1J2mnb1oMcD1ib0gCVx",
-      "artistIds": [
-        "4kKazhy9tDfOgKSWm5g3F9",
-        "10VBp06W8NIgMW4JruLCC4"
-      ],
-      "largeImage": "spotify:ab67616d00001e029dabed68d8c46d46a0c7890d",
-      "smallImage": "spotify:ab67616d0000b2739dabed68d8c46d46a0c7890d"
-    }
-  }
-}
+## 🎧 Audio — Requisitos para el comando `.sendaudio`
 
+El comando `.sendaudio` envía un mensaje de voz real con forma de onda calculada automáticamente en base al contenido del `.mp3`.  
+Para que funcione, es necesario que el proyecto tenga acceso a FFmpeg.
+
+### 📂 Rutas esperadas:
+
+```
+utils/
+├─ audios/
+│  └─ tu_audio.mp3
+└─ libs/
+   └─ ffmpeg/
+       ├─ win/
+       │   └─ bin/
+       │       └─ ffmpeg.exe
+       └─ linux/
+           └─ bin/
+               └─ ffmpeg
+```
+
+> El selfbot detecta automáticamente el sistema operativo y usa el binario correcto.
+
+---
+
+## 📥 ¿No confías en los binarios incluidos?
+
+Puedes reemplazarlos por versiones oficiales:
+
+### 🔵 Windows
+
+1. Ir a: [https://www.gyan.dev/ffmpeg/builds/](https://www.gyan.dev/ffmpeg/builds/)
+2. Descargar `ffmpeg-release-essentials.zip`
+3. Extraer `ffmpeg.exe` y ponerlo en: `utils/libs/ffmpeg/win/bin/`
+
+### 🟢 Linux
+
+1. Ir a: [https://johnvansickle.com/ffmpeg/](https://johnvansickle.com/ffmpeg/)
+2. Descargar: `ffmpeg-release-amd64-static.tar.xz`
+3. Extraer el binario `ffmpeg`
+4. Guardarlo en: `utils/libs/ffmpeg/linux/bin/ffmpeg`
+5. Darle permiso de ejecución:
+
+```bash
+chmod +x utils/libs/ffmpeg/linux/bin/ffmpeg
 ```
 
 ---
 
 ## 🧪 Uso
 
-Ejecuta el bot con:
-
 ```bash
-npm run start (si modificaras hazlo con npm run dev)
+npm run start 
+
+npm run dev (solo si estas editando el codigo)
 ```
 
-Misaki se conectará automáticamente a tu cuenta y mostrará su presencia personalizada.
+El bot se conectará a tu cuenta y mostrará su presencia personalizada.
 
 ---
 
-## 🧰 Comandos disponibles (hay mas, usa el help)
+## 🧰 Comandos principales (existen mas, solo ejecuta .help)
 
 | Comando     | Descripción                                          |
 |-------------|------------------------------------------------------|
@@ -103,32 +116,22 @@ Misaki se conectará automáticamente a tu cuenta y mostrará su presencia perso
 | `.stats`    | Información de uso, memoria y actividad              |
 | `.help`     | Muestra todos los comandos o ayuda por categoría     |
 | `.joinvc`   | Se une a un canal de voz por ID                      |
-| `.leavevc`  | Desconecta del VC actual                             |
-
-> Todos los mensajes enviados por el selfbot se autoeliminan tras 10 segundos(esto esta establecido en el sendTemp.js).
+| `.leavevc`  | Desconecta del canal de voz                          |
+| `.sendaudio`| Envía un mensaje de voz con waveform real            |
 
 ---
 
-
 ## 🔐 Seguridad
 
-- Este proyecto no comparte tu token con nadie.
-- El token debe estar **solo en `.env`** y **nunca subirse a Git**.
-- No compartas tu bot ni ejecutes código de terceros sin revisión.
+- El token nunca se expone públicamente.
+- `.env` está en `.gitignore`.
+- No compartas tu token ni ejecutes código externo sin revisarlo.
 
 ---
 
 ## 📜 Licencia
 
 Este proyecto está licenciado bajo la [MIT License](LICENSE), aunque su uso público en Discord **no está permitido** según los [Términos de Servicio de Discord](https://discord.com/terms).
-
----
-
-## ⚠️ Disclaimer
-
-> El uso de selfbots **viola los Términos de Servicio de Discord**.  
-> Misaki fue creado con fines educativos y para entornos privados de prueba.  
-> Úsalo bajo tu propio riesgo. Ni el autor ni los colaboradores se hacen responsables por suspensiones o sanciones a cuentas.
 
 ---
 
